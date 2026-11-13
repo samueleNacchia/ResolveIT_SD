@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  setup:
+  ci:
     runs-on: ubuntu-26.04
 
     steps:
