@@ -1,0 +1,39 @@
+name: ResolveIt CI Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-26.04
+
+    steps:
+    
+      - name: Start MySql 8.4 database #Already installed into the ubuntu-26.04 image, but service inactive as default
+        run: sudo systemctl start mysql.service #Starts the database with default root:root and 3306 port
+        # ok just to test, not good for production
+
+      - name: Checkout code
+        uses: actions/checkout@v7 #Loads the repository code into the VM
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6 #Loads the local JDK, otherwise downloads it
+        with: #Exactly the same as the default active jdk of the ubuntu-26.04 image
+          java-version: '25'
+          distribution: 'temurin' # no download needed, unless the default distribution is outdated or changes in the future
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository #Creates a cache if empty or not found
+          key: ${{ runner.os }}-resolveit-${{ hashFiles('**/pom.xml') }} #Use the cache if exists
+          restore-keys: ${{ runner.os }}-resolveit- #otherwise updates it if a previes version exists
+
+      - name: Run Integration Tests #the target folder is not persisted after execution, no need to mvn clean
+        run: mvn verify --file pom.xml # recompiles and tests everything
