@@ -2,7 +2,7 @@
 
 ## 1. Application Image (`Dockerfile`)
 
-The Spring Boot application is packaged into a standalone container image built on top of `eclipse-temurin:25-jre-jammy`, using a JRE-only image with an explicit version tag rather than `:latest` to keep the runtime lightweight and builds deterministic.
+The Spring Boot application is packaged into a standalone container image built on top of `eclipse-temurin:25-jre-resolute`, using a JRE-only image with an explicit version tag rather than `:latest` to keep the runtime lightweight and builds deterministic.
 
 Key design and security choices in the `Dockerfile`:
 * **Explicit Artifact Copy:** Uses `COPY` instead of `ADD` to copy the compiled JAR from `target/` into `/app/app.jar` without unintended archive extraction.

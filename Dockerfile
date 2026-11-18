@@ -1,5 +1,5 @@
 # 1. Explicit base image version (avoids unpredictable :latest tag)
-FROM eclipse-temurin:25-jre-jammy
+FROM eclipse-temurin:25-jre-resolute
 
 # 2. Define explicit environment parameters and working directory
 ENV PORT=8080
