@@ -1,8 +1,7 @@
 # 1. Explicit base image version (avoids unpredictable :latest tag)
 FROM eclipse-temurin:25-jre-resolute
 
-# 2. Define explicit environment parameters and working directory
-ENV PORT=8080
+# 2. Define working directory
 WORKDIR /app
 
 # 3. Use COPY instead of ADD to prevent unintended archive extraction

@@ -1,14 +1,16 @@
-name: resolveit
+name: resolveit-dev
 services:
   db:
     image: mysql:8.4
-    container_name: resolveit-db
+    container_name: resolveit-database
     restart: on-failure
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3306:3306"
+      - ${DB_PORT}:3306
     networks:
       - resolveit_network
     volumes:
@@ -24,14 +26,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: resolveit-web
+    container_name: resolveit-server
     restart: on-failure
     ports:
-      - "8080:8080"
+      - ${APP_PORT}:8080
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     depends_on:
       db:
