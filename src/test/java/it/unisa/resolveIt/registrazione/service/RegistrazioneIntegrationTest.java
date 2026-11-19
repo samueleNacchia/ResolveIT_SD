@@ -32,6 +32,9 @@ public class RegistrazioneIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private WebApplicationContext context;
+
     @MockitoBean
     private ClienteRepository clienteRepository;
 
@@ -43,9 +46,6 @@ public class RegistrazioneIntegrationTest {
 
     @MockitoBean
     private RegistrazioneService registrazioneService;
-
-    @Autowired
-    private WebApplicationContext context;
 
     @BeforeEach
     public void setup() {

@@ -7,6 +7,7 @@ import it.unisa.resolveIt.model.entity.Ticket;
 import it.unisa.resolveIt.model.enums.Stato;
 import it.unisa.resolveIt.model.repository.CategoriaRepository;
 import it.unisa.resolveIt.model.repository.TicketRepository;
+import it.unisa.resolveIt.ticket.TicketAttachmentValidator;
 import it.unisa.resolveIt.ticket.dto.TicketDTO;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,18 +66,12 @@ public class TicketImpl implements TicketService{
             }
 
             String originalName = dto.getFileAllegato().getOriginalFilename();
-
-            if (originalName != null) {
-                String lowerName = originalName.toLowerCase();
-                if (lowerName.endsWith(".txt") || lowerName.endsWith(".jpg") ||
-                        lowerName.endsWith(".jpeg") || lowerName.endsWith(".zip")) {
-
-                    ticket.setAllegato(dto.getFileAllegato().getBytes());
-                    ticket.setNomeFile(originalName);
-                } else {
-                    throw new RuntimeException("Formato allegato non valido");
-                }
+            if (!TicketAttachmentValidator.hasAllowedExtension(originalName)) {
+                throw new RuntimeException("Formato allegato non valido");
             }
+
+            ticket.setAllegato(dto.getFileAllegato().getBytes());
+            ticket.setNomeFile(originalName);
         }
 
         if (dto.getTitolo() == null || !dto.getTitolo().matches(titolo_regex)) {

@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -44,11 +46,11 @@ public class AccountIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
-    private AccountImpl accountImpl;
-
     @Autowired
     private WebApplicationContext context;
+
+    @MockitoBean
+    private AccountImpl accountImpl;
 
     @BeforeEach
     public void setup() {
@@ -128,14 +130,15 @@ public class AccountIntegrationTest {
         MyProfileDTO dto = new MyProfileDTO();
         dto.setEmail(email);
         dto.setNome("Mario");
-        dto.setNome("Rossi");
+        dto.setCognome("Rossi");
 
         when(accountImpl.getUserByEmail(email)).thenReturn(dto);
 
         mockMvc.perform(get("/my-profile"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("my-profile"))
-                .andExpect(model().attributeExists("utenteDTO"));
+                .andExpect(model().attribute("utenteDTO", hasProperty("nome", is("Mario"))))
+                .andExpect(model().attribute("utenteDTO", hasProperty("cognome", is("Rossi"))));
     }
 
     /**

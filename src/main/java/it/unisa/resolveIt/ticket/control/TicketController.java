@@ -7,6 +7,7 @@ import it.unisa.resolveIt.model.enums.Stato;
 import it.unisa.resolveIt.model.repository.CategoriaRepository;
 import it.unisa.resolveIt.model.repository.ClienteRepository;
 import it.unisa.resolveIt.model.repository.OperatoreRepository;
+import it.unisa.resolveIt.ticket.TicketAttachmentValidator;
 import it.unisa.resolveIt.ticket.dto.TicketDTO;
 import it.unisa.resolveIt.ticket.service.TicketService;
 import jakarta.validation.Valid;
@@ -73,7 +74,7 @@ public class TicketController {
         MultipartFile file = ticketDTO.getFileAllegato();
         if (file != null && !file.isEmpty()) {
             String fileName = file.getOriginalFilename();
-            if (fileName != null && !fileName.toLowerCase().matches(".*\\.(txt|jpg|jpeg|zip)$")) {
+            if (!TicketAttachmentValidator.hasAllowedExtension(fileName)) {
                 result.rejectValue("fileAllegato", "error.file", "Formato non consentito (solo .txt, .jpg, .jpeg, .zip)");
             }
             if (file.getSize() > 16777216) {
