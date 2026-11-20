@@ -26,6 +26,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PORT: 8080
     container_name: resolveit-server
     restart: on-failure
     ports:
