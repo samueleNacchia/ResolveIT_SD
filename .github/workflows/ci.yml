@@ -1,6 +1,7 @@
 name: ResolveIt CI Workflow
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
@@ -12,12 +13,7 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-26.04
-
     steps:
-    
-      - name: Start MySql 8.4 database #Already installed into the ubuntu-26.04 image, but service inactive as default
-        run: sudo systemctl start mysql.service #Starts the database with default root:root and 3306 port
-        # ok just to test, not good for production
 
       - name: Checkout code
         uses: actions/checkout@v7 #Loads the repository code into the VM
@@ -35,5 +31,14 @@ jobs:
           key: ${{ runner.os }}-resolveit-${{ hashFiles('**/pom.xml') }} #Use the cache if exists
           restore-keys: ${{ runner.os }}-resolveit- #otherwise updates it if a previes version exists
 
-      - name: Run Integration Tests #the target folder is not persisted after execution, no need to mvn clean
+      # For testing and build, an embedded H2 database and an embedded Tomcat server (by Spring Boot) are used
+      - name: Run Integration Tests #La VM viene azzerata alla fine della workflow da GitHub, mvn clean non serve
         run: mvn verify --file pom.xml # recompiles and tests everything
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: resolveit-${{ github.sha }}
+          path: target/resolveit-0.0.1-SNAPSHOT.jar # sarà salvato esternamente alla VM, utilizzabile dalla CD
+          retention-days: 7
