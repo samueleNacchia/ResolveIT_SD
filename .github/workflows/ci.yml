@@ -40,5 +40,8 @@ jobs:
         if: success()
         with:
           name: resolveit-${{ github.sha }}
-          path: target/resolveit-0.0.1-SNAPSHOT.jar # sarà salvato esternamente alla VM, utilizzabile dalla CD
+          # Sarà salvato esternamente alla VM, utilizzabile dalla CD
+          path: |
+            target/resolveit-0.0.1-SNAPSHOT.jar
+            target/surefire-reports/
           retention-days: 7
