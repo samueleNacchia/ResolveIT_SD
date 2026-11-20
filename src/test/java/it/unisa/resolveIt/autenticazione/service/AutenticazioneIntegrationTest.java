@@ -32,6 +32,9 @@ public class AutenticazioneIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private WebApplicationContext context;
+
     @MockitoBean
     private ClienteRepository clienteRepository;
 
@@ -40,9 +43,6 @@ public class AutenticazioneIntegrationTest {
 
     @MockitoBean
     private GestoreRepository gestoreRepository;
-
-    @Autowired
-    private WebApplicationContext context;
 
     @BeforeEach
     public void setup() {
@@ -94,7 +94,7 @@ public class AutenticazioneIntegrationTest {
         String email = "cliente@test.com";
         Cliente clienteEsistente = new Cliente();
         clienteEsistente.setEmail(email);
-        clienteEsistente.setPassword("$2a$10$hashedPassword...");
+        clienteEsistente.setPassword(new BCryptPasswordEncoder().encode("correctPassword"));
 
         when(clienteRepository.findByEmail(email)).thenReturn(clienteEsistente);
 

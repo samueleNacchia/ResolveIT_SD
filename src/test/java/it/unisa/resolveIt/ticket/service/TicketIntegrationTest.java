@@ -10,6 +10,8 @@ import it.unisa.resolveIt.model.repository.OperatoreRepository;
 import it.unisa.resolveIt.ticket.dto.TicketDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -54,12 +56,10 @@ public class TicketIntegrationTest {
 
     @BeforeEach
     public void setup() {
-        // Inizializzazione manuale come nel test del collega
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(springSecurity())
                 .build();
 
-        // Setup utenti per aggirare i filtri di Security che cercano l'utente nel DB
         Cliente mockCliente = new Cliente();
         mockCliente.setEmail("cliente@test.it");
 
@@ -71,10 +71,15 @@ public class TicketIntegrationTest {
         lenient().when(categoriaRepository.findAll()).thenReturn(new ArrayList<>());
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "allegato.txt", "allegato.jpg", "allegato.jpeg", "allegato.zip",
+            "allegato.TXT", "allegato.JPG", "allegato.JPEG", "allegato.ZIP"
+    })
     @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
-    public void testSalvaTicket_Successo() throws Exception {
+    public void testSalvaTicket_AllegatoValido(String filename) throws Exception {
         mockMvc.perform(multipart("/ticket/salva")
+                        .file(new MockMultipartFile("fileAllegato", filename, "application/octet-stream", "contenuto".getBytes()))
                         .param("titolo", "Problema Connessione")
                         .param("descrizione", "Internet non funziona")
                         .param("idCategoria", "1")
@@ -82,6 +87,8 @@ public class TicketIntegrationTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/ticket/home"))
                 .andExpect(flash().attribute("successMessage", "Ticket creato con successo!"));
+
+        verify(ticketService).addTicket(any(TicketDTO.class), any(Cliente.class));
     }
 
     @Test
@@ -91,12 +98,14 @@ public class TicketIntegrationTest {
         doThrow(new RuntimeException("Errore")).when(ticketService).addTicket(any(TicketDTO.class), any(Cliente.class));
 
         mockMvc.perform(post("/ticket/salva")
-                        .param("titolo", "Valido")
-                        .param("descrizione", "Valida")
+                        .param("titolo", "Titolo valido")
+                        .param("descrizione", "Descrizione valida")
                         .param("idCategoria", "1")
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("errorMessage", "Errore: creazione ticket fallita"));
+
+        verify(ticketService).addTicket(any(TicketDTO.class), any(Cliente.class));
     }
 
     @Test
@@ -106,6 +115,8 @@ public class TicketIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "Ticket assegnato con successo!"));
+
+        verify(ticketService).assignTicket(eq(1L), argThat(op -> "op@test.it".equals(op.getEmail())));
     }
 
     @Test
@@ -139,6 +150,8 @@ public class TicketIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "Ticket eliminato con successo!"));
+
+        verify(ticketService).deleteTicket(1L);
     }
 
     @Test
@@ -148,6 +161,8 @@ public class TicketIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "Ticket rilasciato con successo!"));
+
+        verify(ticketService).releaseTicket(1L);
     }
 
 
@@ -166,11 +181,12 @@ public class TicketIntegrationTest {
     }
 
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {"documento.pdf", "virus.exe", "immagine.jpg.exe"})
     @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
-    public void testSalvaTicket_FormatoFileErrato() throws Exception {
+    public void testSalvaTicket_FormatoFileErrato(String filename) throws Exception {
         MockMultipartFile filePdf = new MockMultipartFile(
-                "fileAllegato", "documento.pdf", "application/pdf", "contenuto".getBytes());
+                "fileAllegato", filename, "application/octet-stream", "contenuto".getBytes());
 
         mockMvc.perform(multipart("/ticket/salva")
                         .file(filePdf)
@@ -186,11 +202,29 @@ public class TicketIntegrationTest {
         verify(ticketService, never()).addTicket(any(), any());
     }
 
+    @Test
+    @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
+    public void testSalvaTicket_NomeFileAssente() throws Exception {
+        MockMultipartFile fileSenzaNome = new MockMultipartFile(
+                "fileAllegato", null, "text/plain", "contenuto".getBytes());
+
+        mockMvc.perform(multipart("/ticket/salva")
+                        .file(fileSenzaNome)
+                        .param("titolo", "Titolo valido")
+                        .param("descrizione", "Descrizione valida")
+                        .param("idCategoria", "1")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeHasFieldErrors("ticketDTO", "fileAllegato"));
+
+        verify(ticketService, never()).addTicket(any(), any());
+    }
+
 
     @Test
     @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
     public void testSalvaTicket_FileTroppoGrande() throws Exception {
-        byte[] grandeContenuto = new byte[17 * 1024 * 1024]; // 17MB
+        byte[] grandeContenuto = new byte[17 * 1024 * 1024];
         MockMultipartFile filePesante = new MockMultipartFile(
                 "fileAllegato", "test.jpg", "image/jpeg", grandeContenuto);
 
