@@ -41,9 +41,6 @@ class TicketServiceTest {
     @InjectMocks
     private TicketImpl ticketService;
 
-    private final String titolo_regex = "^[a-zA-Z0-9À-ÿ '‘\".,!?-]{5,100}";
-
-
     @Test
     void addTicket_Successo() throws IOException {
         TicketDTO dto = new TicketDTO();
@@ -54,7 +51,6 @@ class TicketServiceTest {
 
         Cliente autore = new Cliente();
         Categoria cat = new Categoria();
-        cat.setID_C(1);
         cat.enable();
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(cat));
@@ -193,7 +189,6 @@ class TicketServiceTest {
         dto.setTitolo("Titolo Valido");
 
         Categoria catInattiva = new Categoria();
-        catInattiva.setID_C(1);
         catInattiva.setStato(false); //
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(catInattiva));
@@ -267,7 +262,6 @@ class TicketServiceTest {
         dto.setDescrizione("blablabla");
 
         Categoria catAttiva = new Categoria();
-        catAttiva.setID_C(1);
         catAttiva.setStato(true);
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(catAttiva));

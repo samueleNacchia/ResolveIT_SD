@@ -7,6 +7,7 @@ import it.unisa.resolveIt.model.enums.Stato;
 import it.unisa.resolveIt.model.repository.CategoriaRepository;
 import it.unisa.resolveIt.model.repository.ClienteRepository;
 import it.unisa.resolveIt.model.repository.OperatoreRepository;
+import it.unisa.resolveIt.ticket.control.TicketController;
 import it.unisa.resolveIt.ticket.dto.TicketDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,12 +22,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -41,6 +44,9 @@ public class TicketIntegrationTest {
 
     @Autowired
     private WebApplicationContext context;
+
+    @Autowired
+    private TicketController ticketController;
 
     @MockitoBean
     private TicketService ticketService;
@@ -134,6 +140,18 @@ public class TicketIntegrationTest {
 
     @Test
     @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
+    public void testDownloadFile_NomeFileAssente() throws Exception {
+        Ticket t = new Ticket();
+        t.setAllegato("content".getBytes());
+        when(ticketService.getTicketById(1L)).thenReturn(t);
+
+        mockMvc.perform(get("/ticket/download/1"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"allegato.dat\""));
+    }
+
+    @Test
+    @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
     public void testDownloadFile_NotFound() throws Exception {
         Ticket t = new Ticket();
         t.setAllegato(null);
@@ -155,6 +173,16 @@ public class TicketIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
+    public void testEliminaTicket_ErroreService() throws Exception {
+        doThrow(new RuntimeException("Errore")).when(ticketService).deleteTicket(1L);
+
+        mockMvc.perform(post("/ticket/elimina/1").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("errorMessage", "Errore: eliminazione ticket fallita"));
+    }
+
+    @Test
     @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
     public void testRilasciaTicket_Successo() throws Exception {
         mockMvc.perform(post("/ticket/rilascia/1")
@@ -163,6 +191,53 @@ public class TicketIntegrationTest {
                 .andExpect(flash().attribute("successMessage", "Ticket rilasciato con successo!"));
 
         verify(ticketService).releaseTicket(1L);
+    }
+
+    @Test
+    @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
+    public void testAssegnaTicket_ErroreService() throws Exception {
+        doThrow(new RuntimeException("Errore")).when(ticketService).assignTicket(eq(1L), any(Operatore.class));
+
+        mockMvc.perform(post("/ticket/prendi/1").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("errorMessage", "Errore: assegnazione ticket fallita"));
+    }
+
+    @Test
+    @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
+    public void testRisolviTicket_Successo() throws Exception {
+        mockMvc.perform(post("/ticket/risolvi/1").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("successMessage", "Ticket risolto con successo!"));
+
+        verify(ticketService).resolveTicket(1L);
+    }
+
+    @Test
+    @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
+    public void testRisolviTicket_ErroreService() throws Exception {
+        doThrow(new RuntimeException("Errore")).when(ticketService).resolveTicket(1L);
+
+        mockMvc.perform(post("/ticket/risolvi/1").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("errorMessage", "Errore: risoluzione ticket fallita"));
+    }
+
+    @Test
+    @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
+    public void testRilasciaTicket_ErroreService() throws Exception {
+        doThrow(new RuntimeException("Errore")).when(ticketService).releaseTicket(1L);
+
+        mockMvc.perform(post("/ticket/rilascia/1").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("errorMessage", "Errore: rilascio ticket fallito"));
+    }
+
+    @Test
+    @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
+    public void testAssegnaTicket_PrincipalAssente() {
+        assertEquals("redirect:/login", ticketController.assign(1L, null, new RedirectAttributesModelMap()));
+        verifyNoInteractions(operatoreRepository, ticketService);
     }
 
 
@@ -242,8 +317,6 @@ public class TicketIntegrationTest {
     @Test
     @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
     public void testSalvaTicket_TitoloMancante() throws Exception {
-        when(categoriaRepository.findAll()).thenReturn(new ArrayList<>());
-
         mockMvc.perform(post("/ticket/salva")
                         .param("titolo", "")
                         .param("descrizione", "Descrizione")
@@ -255,15 +328,26 @@ public class TicketIntegrationTest {
                 .andExpect(model().attributeExists("categorie", "lista", "openTab"));
     }
 
+    @Test
+    @WithMockUser(username = "cliente@test.it", authorities = "CLIENTE")
+    public void testSalvaTicket_AllegatoVuoto() throws Exception {
+        mockMvc.perform(multipart("/ticket/salva")
+                        .file(new MockMultipartFile("fileAllegato", "vuoto.txt", "text/plain", new byte[0]))
+                        .param("titolo", "Titolo valido")
+                        .param("descrizione", "Descrizione valida")
+                        .param("idCategoria", "1")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ticket/home"))
+                .andExpect(flash().attribute("successMessage", "Ticket creato con successo!"));
+
+        verify(ticketService).addTicket(any(TicketDTO.class), any(Cliente.class));
+    }
+
 
     @Test
     @WithMockUser(username = "op@test.it", authorities = "OPERATORE")
     public void testOperatoreHome_Successo() throws Exception {
-        // Preparazione dati
-        Operatore op = new Operatore();
-        op.setEmail("op@test.it");
-        when(operatoreRepository.findByEmail("op@test.it")).thenReturn(op);
-
         when(ticketService.getTicketInCarico(any())).thenReturn(new ArrayList<>());
         when(ticketService.getTicketDisponibili()).thenReturn(new ArrayList<>());
 
@@ -279,28 +363,34 @@ public class TicketIntegrationTest {
         Operatore op = new Operatore();
         when(operatoreRepository.findByEmail(anyString())).thenReturn(op);
 
-        // Creiamo un ticket RISOLTO (che dovrebbe andare in fondo)
+        // A parità di stato, i ticket più recenti vengono prima.
         TicketDTO tRisolto = new TicketDTO();
         tRisolto.setStato(Stato.RISOLTO);
-        tRisolto.setTitolo("Ticket Vecchio");
-        tRisolto.setDataCreazione(LocalDateTime.now().minusDays(1));
+        tRisolto.setDataCreazione(LocalDateTime.now().minusDays(4));
 
-        // Creiamo un ticket IN_CORSO (che deve andare in cima)
+        TicketDTO tRisoltoNuovo = new TicketDTO();
+        tRisoltoNuovo.setStato(Stato.RISOLTO);
+        tRisoltoNuovo.setDataCreazione(LocalDateTime.now().minusDays(3));
+
         TicketDTO tInCorso = new TicketDTO();
         tInCorso.setStato(Stato.IN_CORSO);
-        tInCorso.setTitolo("Ticket Attivo");
-        tInCorso.setDataCreazione(LocalDateTime.now());
+        tInCorso.setDataCreazione(LocalDateTime.now().minusDays(2));
 
-        List<TicketDTO> mockList = Arrays.asList(tRisolto, tInCorso);
+        TicketDTO tInCorsoNuovo = new TicketDTO();
+        tInCorsoNuovo.setStato(Stato.IN_CORSO);
+        tInCorsoNuovo.setDataCreazione(LocalDateTime.now().minusDays(1));
+
+        List<TicketDTO> mockList = Arrays.asList(tRisolto, tInCorso, tRisoltoNuovo, tInCorsoNuovo);
         when(ticketService.getTicketInCarico(any())).thenReturn(mockList);
 
         mockMvc.perform(get("/ticket/operatore-home"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("listaLavoro", matchesListOrder(tInCorso, tRisolto)));
+                .andExpect(model().attribute("listaLavoro",
+                        matchesListOrder(tInCorsoNuovo, tInCorso, tRisoltoNuovo, tRisolto)));
     }
 
     // Helper method per verificare l'ordine nella lista del modello
-    private static org.hamcrest.Matcher<Iterable<? extends TicketDTO>> matchesListOrder(TicketDTO primo, TicketDTO secondo) {
-        return org.hamcrest.Matchers.contains(primo, secondo);
+    private static org.hamcrest.Matcher<Iterable<? extends TicketDTO>> matchesListOrder(TicketDTO... tickets) {
+        return org.hamcrest.Matchers.contains(tickets);
     }
 }
