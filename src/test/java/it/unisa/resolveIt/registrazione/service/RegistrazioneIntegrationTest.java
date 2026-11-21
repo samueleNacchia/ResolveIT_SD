@@ -22,6 +22,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -241,6 +242,42 @@ public class RegistrazioneIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/ticket/home"));
+    }
+
+    @Test
+    public void showRegistrationForm_Successo() throws Exception {
+        mockMvc.perform(get("/register"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("registrazione"))
+                .andExpect(model().attributeExists("utenteDTO"));
+    }
+
+    @Test
+    public void passwordVuota() throws Exception {
+        mockMvc.perform(post("/register")
+                        .param("email", "mario@email.it")
+                        .param("password", "") // Copre: dto.getPassword() != null (true) && !isEmpty() (false)
+                        .param("confermaPassword", "")
+                        .param("nome", "Mario")
+                        .param("cognome", "Rossi")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("registrazione"))
+                .andExpect(model().attributeHasFieldErrors("utenteDTO", "password"));
+    }
+
+    @Test
+    public void passwordNull() throws Exception {
+        mockMvc.perform(post("/register")
+                        .param("email", "mario@email.it")
+                        // Omettendo il parametro "password", dto.getPassword() resta null
+                        // Copre: dto.getPassword() != null (false)
+                        .param("nome", "Mario")
+                        .param("cognome", "Rossi")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("registrazione"))
+                .andExpect(model().attributeHasFieldErrors("utenteDTO", "password"));
     }
 
 }
