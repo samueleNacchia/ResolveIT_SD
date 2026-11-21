@@ -35,12 +35,46 @@ jobs:
       - name: Run Integration Tests #La VM viene azzerata alla fine della workflow da GitHub, mvn clean non serve
         run: mvn verify --file pom.xml # recompiles and tests everything
 
+      - name: Generate JaCoCo report
+        run: mvn jacoco:report
+
+      #- name: Run PiTest mutation testing
+      #  run: mvn org.pitest:pitest-maven:mutationCoverage
+      #  continue-on-error: true
+
+      # Display test results in JUnit XML format
+      - name: Generate test report
+        uses: dorny/test-reporter@v2
+        if: success() || failure()
+        with:
+          name: Maven Test Results
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: success() || failure()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./target/site/jacoco/jacoco.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./target/surefire-reports/TEST-*.xml
+
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v7
         if: success()
         with:
           name: resolveit-${{ github.sha }}
-          # Sarà salvato esternamente alla VM, utilizzabile dalla CD
+          # Saved externally from the VM, ready for CD usage
           path: |
             target/resolveit-0.0.1-SNAPSHOT.jar
             target/surefire-reports/

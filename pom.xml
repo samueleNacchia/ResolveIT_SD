@@ -121,9 +121,7 @@
                     <excludes><exclude>it/unisa/resolveIt/ResolveItApplication.class</exclude>
                         <exclude>it/unisa/resolveIt/common/**</exclude>
                         <exclude>it/unisa/resolveIt/model/**</exclude>
-                        <exclude>it/unisa/resolveIt/account/dto/**</exclude>
-                        <exclude>it/unisa/resolveIt/registrazione/dto/**</exclude>
-                        <exclude>it/unisa/resolveIt/ticket/dto/**</exclude>
+                        <exclude>it/unisa/resolveIt/**/dto/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -154,12 +152,12 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
+                                            <minimum>0.90</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.50</minimum>
+                                            <minimum>0.90</minimum>
                                         </limit>
                                         <limit>
                                             <counter>CLASS</counter>
