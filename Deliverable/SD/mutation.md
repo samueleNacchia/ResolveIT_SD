@@ -35,14 +35,14 @@ Across all evaluated classes in the application domain, the test suite achieved 
 
 | Metric | Value |
 | :--- | :---: |
-| Total Mutations Generated | $164$ |
-| Killed Mutations | $137$ |
-| Survived Mutations | $27$ |
-| Overall Mutation Score | $83.53\%$ ($\frac{137}{164} \times 100$) |
+| Total Mutations Generated | $164\%$ |
+| Killed Mutations | $137\%$ |
+| Survived Mutations | $27\%$ |
+| Overall Mutation Score | $83.53\%$  |
 
 A score above the gate confirms that, overall, the tests detect most injected faults. The surviving mutants are concentrated in specific areas (below), which represent the best opportunities to strengthen test quality.
 
 ### Areas with Low Mutation Coverage
 
-* **`GestoreController` ($25.00\%$):** Represents the lowest mutation score due to missing unit tests for administrative endpoints, resulting in unkilled mutators for default return values and branch conditions. Adding focused tests for these endpoints would raise both coverage and the mutation score.
-* **`RegistrazioneController` ($71.43\%$):** Survived mutations are concentrated around boundary checks on input fields during registration validation — e.g. edge cases at the limits of length or format constraints. Tightening those assertions (including boundary values) would kill more mutants.
+* **`GestoreController` (25.00\%):** Represents the lowest mutation score due to missing unit tests for administrative endpoints, resulting in unkilled mutators for default return values and branch conditions. Adding focused tests for these endpoints would raise both coverage and the mutation score.
+* **`RegistrazioneController` (71.43\%):** Survived mutations are concentrated around boundary checks on input fields during registration validation — e.g. edge cases at the limits of length or format constraints. Tightening those assertions (including boundary values) would kill more mutants.

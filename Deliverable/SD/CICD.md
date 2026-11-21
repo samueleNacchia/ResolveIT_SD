@@ -36,11 +36,11 @@ Both workflows have **read-only** access to the repository (`contents: read`) an
 
 ```
 ┌─────────────┐   push / PR    ┌──────────────────────────┐   success on PR   ┌──────────────────────────┐
-│  Developer   │ ───────────►  │        CI job             │ ────────────────► │     CD job            │
-│  commits     │               │ checkout → JDK25 → cache  │                   │ login → buildx → push    │
-└─────────────┘               │ mvn verify (H2)           │                   │ multi-platform image      │
-                              │ JaCoCo + PiTest reports    │                   │ to Docker Hub             │
-                              └──────────────────────────┘                   └──────────────────────────┘
+│  Developer  │ ───────────►   │        CI job            │ ────────────────► │     CD job               │
+│  commits    │                │ checkout → JDK25 → cache │                   │ login → buildx → push    │
+└─────────────┘                │ mvn verify (H2)          │                   │ multi-platform image     │
+                               │ JaCoCo + PiTest reports  │                   │ to Docker Hub            │
+                               └──────────────────────────┘                   └──────────────────────────┘
 ```
 
 ## The CI job (`ci.yml`)
@@ -84,34 +84,23 @@ Regenerates the JaCoCo XML/HTML coverage data (see [coverage.md](./coverage.md))
 
 ### 6. Display test results
 
-`dorny/test-reporter@v2` parses the JUnit XML files in `target/surefire-reports/*.xml` and renders them as a browsable report attached to the run.
+`dorny/test-reporter@v3` parses the JUnit XML files in `target/surefire-reports/*.xml` and renders them as a browsable report attached to the run. It runs whenever the job succeeds or fails (`if: success() || failure()`).
 
-### 7. Upload coverage to Codecov
+### 7. Upload coverage and test results to Codecov
 
 ```yaml
-uses: codecov/codecov-action@v4
+uses: codecov/codecov-action@v7
 with:
   token: ${{ secrets.CODECOV_TOKEN }}
-  file: ./target/site/jacoco/jacoco.xml
-  flags: unittests
+  files: ./target/site/jacoco/jacoco.xml,./target/surefire-reports/TEST-*.xml
+  flags: unittests,test-results
   name: codecov-umbrella
   fail_ci_if_error: false
 ```
 
-Uploads the JaCoCo XML to Codecov (authenticated with `CODECOV_TOKEN`). `fail_ci_if_error: false` keeps the build green even if Codecov is unreachable.
+Uploads both the JaCoCo coverage XML and the raw JUnit test results to Codecov in a single step (authenticated with `CODECOV_TOKEN`). The `files` parameter now points at **both** files, so the separate `codecov/test-results-action` step is no longer needed. The combined data lets Codecov compute both coverage and additional metrics from the test outcomes. `fail_ci_if_error: false` keeps the build green even if Codecov is unreachable.
 
-### 8. Upload test results to Codecov
-
-```yaml
-uses: codecov/test-results-action@v1
-with:
-  token: ${{ secrets.CODECOV_TOKEN }}
-  file: ./target/surefire-reports/TEST-*.xml
-```
-
-Uploads the raw JUnit results so Codecov can compute additional metrics. Skipped only when the run is cancelled (`if: !cancelled()`).
-
-### 9. Upload JAR artifact (for CD)
+### 8. Upload JAR artifact (for CD)
 
 ```yaml
 uses: actions/upload-artifact@v7

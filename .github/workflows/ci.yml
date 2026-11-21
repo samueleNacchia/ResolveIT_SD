@@ -44,7 +44,7 @@ jobs:
 
       # Display test results in JUnit XML format
       - name: Generate test report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: success() || failure()
         with:
           name: Maven Test Results
@@ -52,22 +52,15 @@ jobs:
           reporter: java-junit
           fail-on-error: false
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage and test results to Codecov
         if: success() || failure()
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./target/site/jacoco/jacoco.xml
-          flags: unittests
+          files: ./target/site/jacoco/jacoco.xml,./target/surefire-reports/TEST-*.xml
+          flags: unittests,test-results
           name: codecov-umbrella
           fail_ci_if_error: false
-
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./target/surefire-reports/TEST-*.xml
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v7
