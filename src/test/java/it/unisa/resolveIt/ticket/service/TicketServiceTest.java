@@ -10,17 +10,23 @@ import it.unisa.resolveIt.model.repository.TicketRepository;
 import it.unisa.resolveIt.ticket.dto.TicketDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,9 +41,6 @@ class TicketServiceTest {
     @InjectMocks
     private TicketImpl ticketService;
 
-    private final String titolo_regex = "^[a-zA-Z0-9À-ÿ '‘\".,!?-]{5,100}";
-
-
     @Test
     void addTicket_Successo() throws IOException {
         TicketDTO dto = new TicketDTO();
@@ -48,7 +51,6 @@ class TicketServiceTest {
 
         Cliente autore = new Cliente();
         Categoria cat = new Categoria();
-        cat.setID_C(1);
         cat.enable();
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(cat));
@@ -79,11 +81,14 @@ class TicketServiceTest {
 
 
 
-    @Test
-    void addTicket_FormatoAllegatoNonValido() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = {"virus.exe", "documento.pdf", "immagine.jpg.exe"})
+    void addTicket_FormatoAllegatoNonValido(String filename) throws IOException {
         TicketDTO dto = new TicketDTO();
         dto.setIdCategoria(1L);
-        dto.setFileAllegato(new MockMultipartFile("file", "virus.exe", "application/octet-stream", "content".getBytes()));
+        dto.setTitolo("Titolo valido");
+        dto.setDescrizione("Descrizione valida");
+        dto.setFileAllegato(new MockMultipartFile("file", filename, "application/octet-stream", "content".getBytes()));
 
         Categoria cat = new Categoria();
         cat.setStato(true);
@@ -94,6 +99,31 @@ class TicketServiceTest {
         });
 
         assertEquals("Formato allegato non valido", exception.getMessage());
+        verify(ticketRepository, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "allegato.txt", "allegato.jpg", "allegato.jpeg", "allegato.zip",
+            "allegato.TXT", "allegato.JPG", "allegato.JPEG", "allegato.ZIP"
+    })
+    void addTicket_AllegatoConEstensioneValida(String filename) throws IOException {
+        byte[] content = "contenuto di test".getBytes();
+        TicketDTO dto = new TicketDTO();
+        dto.setIdCategoria(1L);
+        dto.setTitolo("Titolo valido");
+        dto.setDescrizione("Descrizione valida");
+        dto.setFileAllegato(new MockMultipartFile("file", filename, "application/octet-stream", content));
+
+        Categoria categoria = new Categoria("Hardware", true);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+
+        ticketService.addTicket(dto, new Cliente());
+
+        ArgumentCaptor<Ticket> savedTicket = ArgumentCaptor.forClass(Ticket.class);
+        verify(ticketRepository).save(savedTicket.capture());
+        assertEquals(filename, savedTicket.getValue().getNomeFile());
+        assertArrayEquals(content, savedTicket.getValue().getAllegato());
     }
 
     @Test
@@ -159,7 +189,6 @@ class TicketServiceTest {
         dto.setTitolo("Titolo Valido");
 
         Categoria catInattiva = new Categoria();
-        catInattiva.setID_C(1);
         catInattiva.setStato(false); //
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(catInattiva));
@@ -179,7 +208,6 @@ class TicketServiceTest {
         dto.setIdCategoria(1L);
         dto.setTitolo("Titolo Valido");
         dto.setDescrizione("Descrizione valida");
-        dto.setFileAllegato(new MockMultipartFile("file", "immagine.jpg", "image/jpeg", "content".getBytes()));
 
         Categoria cat = new Categoria();
         cat.setStato(true);
@@ -234,7 +262,6 @@ class TicketServiceTest {
         dto.setDescrizione("blablabla");
 
         Categoria catAttiva = new Categoria();
-        catAttiva.setID_C(1);
         catAttiva.setStato(true);
 
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(catAttiva));
@@ -251,9 +278,11 @@ class TicketServiceTest {
         dto.setTitolo("Titolo Valido");
         dto.setDescrizione("blablabla");
 
-        // SA_OK: Size <= 16MB (esattamente 16MB)
-        byte[] content = new byte[16 * 1024 * 1024];
-        MockMultipartFile validFile = new MockMultipartFile("file", "test.zip", "application/zip", content);
+        MultipartFile validFile = mock(MultipartFile.class);
+        when(validFile.isEmpty()).thenReturn(false);
+        when(validFile.getSize()).thenReturn(16L * 1024 * 1024);
+        when(validFile.getOriginalFilename()).thenReturn("test.zip");
+        when(validFile.getBytes()).thenReturn(new byte[0]);
         dto.setFileAllegato(validFile);
 
         Categoria cat = new Categoria();
@@ -313,9 +342,9 @@ class TicketServiceTest {
         TicketDTO dto = new TicketDTO();
         dto.setIdCategoria(1L);
         dto.setTitolo("Titolo Valido");
-
-        byte[] content = new byte[(16 * 1024 * 1024) + 1];
-        MockMultipartFile largeFile = new MockMultipartFile("file", "test.jpg", "image/jpeg", content);
+        MultipartFile largeFile = mock(MultipartFile.class);
+        when(largeFile.isEmpty()).thenReturn(false);
+        when(largeFile.getSize()).thenReturn(16L * 1024 * 1024 + 1);
         dto.setFileAllegato(largeFile);
 
         Categoria cat = new Categoria();
@@ -342,6 +371,9 @@ class TicketServiceTest {
 
         ticketService.assignTicket(ticketId, op);
 
+        assertEquals(Stato.IN_CORSO, ticket.getStato());
+        assertSame(op, ticket.getOperatore());
+        assertNotNull(ticket.getDataInCarico());
         verify(ticketRepository).save(ticket);
     }
 
@@ -403,6 +435,8 @@ class TicketServiceTest {
 
         ticketService.resolveTicket(ticketId);
 
+        assertEquals(Stato.RISOLTO, ticket.getStato());
+        assertNotNull(ticket.getDataResolved());
         verify(ticketRepository).save(ticket);
     }
 
@@ -468,6 +502,8 @@ class TicketServiceTest {
 
         ticketService.deleteTicket(ticketId);
 
+        assertEquals(Stato.ANNULLATO, ticket.getStato());
+        assertNotNull(ticket.getDataAnnullamento());
         verify(ticketRepository).save(ticket);
     }
 
@@ -498,6 +534,8 @@ class TicketServiceTest {
 
         ticketService.releaseTicket(ticketId);
 
+        assertEquals(Stato.APERTO, ticket.getStato());
+        assertNull(ticket.getOperatore());
         verify(ticketRepository).save(ticket);
     }
 
@@ -549,6 +587,9 @@ class TicketServiceTest {
 
         List<TicketDTO> risultato = ticketService.getTicketInCarico(op);
 
+        assertEquals(1, risultato.size());
+        assertEquals(5L, risultato.get(0).getId());
+        assertEquals("Ticket Operatore", risultato.get(0).getTitolo());
         verify(ticketRepository).findByOperatore(op);
     }
 

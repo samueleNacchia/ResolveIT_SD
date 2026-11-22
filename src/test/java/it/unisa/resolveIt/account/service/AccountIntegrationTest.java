@@ -1,8 +1,13 @@
 package it.unisa.resolveIt.account.service;
 
+import it.unisa.resolveIt.account.control.AccountController;
+import it.unisa.resolveIt.account.control.GestoreController;
 import it.unisa.resolveIt.account.dto.MyProfileDTO;
 import it.unisa.resolveIt.model.entity.Cliente;
 import it.unisa.resolveIt.model.entity.Operatore;
+import it.unisa.resolveIt.model.repository.CategoriaRepository;
+import it.unisa.resolveIt.model.repository.ClienteRepository;
+import it.unisa.resolveIt.model.repository.OperatoreRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +19,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.ArrayList;
+
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -44,11 +52,23 @@ public class AccountIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private WebApplicationContext context;
+
     @MockitoBean
     private AccountImpl accountImpl;
 
     @Autowired
-    private WebApplicationContext context;
+    private GestoreController gestoreController;
+
+    @MockitoBean
+    private OperatoreRepository operatoreRepository;
+
+    @MockitoBean
+    private ClienteRepository clienteRepository;
+
+    @MockitoBean
+    private CategoriaRepository categoriaRepository;
 
     @BeforeEach
     public void setup() {
@@ -128,14 +148,15 @@ public class AccountIntegrationTest {
         MyProfileDTO dto = new MyProfileDTO();
         dto.setEmail(email);
         dto.setNome("Mario");
-        dto.setNome("Rossi");
+        dto.setCognome("Rossi");
 
         when(accountImpl.getUserByEmail(email)).thenReturn(dto);
 
         mockMvc.perform(get("/my-profile"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("my-profile"))
-                .andExpect(model().attributeExists("utenteDTO"));
+                .andExpect(model().attribute("utenteDTO", hasProperty("nome", is("Mario"))))
+                .andExpect(model().attribute("utenteDTO", hasProperty("cognome", is("Rossi"))));
     }
 
     /**
@@ -304,4 +325,40 @@ public class AccountIntegrationTest {
         assertEquals("NuovoNomeCli", cliReale.getNome());
     }
 
+
+    @Test
+    @WithMockUser(username = "gestore@test.it", authorities = "GESTORE")
+    public void visualizzaDashboardGestore_Successo() throws Exception {
+        when(operatoreRepository.findAll()).thenReturn(new ArrayList<>());
+        when(clienteRepository.findAll()).thenReturn(new ArrayList<>());
+        when(categoriaRepository.findAll()).thenReturn(new ArrayList<>());
+
+        mockMvc.perform(get("/gestore"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("gestore"))
+                .andExpect(model().attribute("username", "gestore@test.it"))
+                .andExpect(model().attributeExists("utenteDTO", "operatori", "clienti", "categorie"));
+
+        verify(operatoreRepository).findAll();
+        verify(clienteRepository).findAll();
+        verify(categoriaRepository).findAll();
+    }
+
+    @Test
+    @WithMockUser(authorities = "GESTORE")
+    public void visualizzaDashboardGestore_UserDetailsNull() {
+        when(operatoreRepository.findAll()).thenReturn(new ArrayList<>());
+        when(clienteRepository.findAll()).thenReturn(new ArrayList<>());
+        when(categoriaRepository.findAll()).thenReturn(new ArrayList<>());
+
+        org.springframework.ui.Model model = new org.springframework.ui.ExtendedModelMap();
+        String viewName = gestoreController.visualizzaDashboardGestore(null, model);
+
+        assertEquals("gestore", viewName);
+        assertFalse(model.containsAttribute("username"));
+        assertTrue(model.containsAttribute("utenteDTO"));
+        assertTrue(model.containsAttribute("operatori"));
+        assertTrue(model.containsAttribute("clienti"));
+        assertTrue(model.containsAttribute("categorie"));
+    }
 }

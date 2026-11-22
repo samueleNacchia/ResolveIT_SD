@@ -21,7 +21,7 @@ public class CategoriaController {
         try {
             categoriaImpl.disableCategoria(id);
         } catch (Exception e) {
-            e.printStackTrace();
+            return "redirect:/gestore?section=categories&error";
         }
         return "redirect:/gestore?section=categories";
     }
@@ -31,7 +31,7 @@ public class CategoriaController {
         try {
             categoriaImpl.enableCategoria(id);
         } catch (Exception e) {
-            e.printStackTrace();
+            return "redirect:/gestore?section=categories&error";
         }
         return "redirect:/gestore?section=categories";
     }

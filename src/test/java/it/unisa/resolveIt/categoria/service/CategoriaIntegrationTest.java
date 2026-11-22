@@ -1,8 +1,7 @@
 package it.unisa.resolveIt.categoria.service;
 
-import it.unisa.resolveIt.model.repository.CategoriaRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -12,10 +11,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -37,14 +34,11 @@ public class CategoriaIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
-    private CategoriaRepository categoriaRepository;
+    @Autowired
+    private WebApplicationContext context;
 
     @MockitoBean
     private CategoriaImpl categoriaImpl;
-
-    @Autowired
-    private WebApplicationContext context;
 
     @BeforeEach
     public void setup() {
@@ -64,6 +58,8 @@ public class CategoriaIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/gestore?section=categories&success"));
+
+        verify(categoriaImpl).addCategoria(any());
     }
 
     /**
@@ -82,6 +78,8 @@ public class CategoriaIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/gestore?section=categories&error"));
+
+        verify(categoriaImpl).addCategoria(any());
     }
 
     /**
@@ -97,6 +95,8 @@ public class CategoriaIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/gestore?section=categories&success"));
+
+        verify(categoriaImpl).updateCategoria(any());
     }
 
     /**
@@ -115,6 +115,8 @@ public class CategoriaIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/gestore?section=categories&error"));
+
+        verify(categoriaImpl).updateCategoria(any());
     }
 
     /**
@@ -129,6 +131,8 @@ public class CategoriaIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/gestore?section=categories"));
+
+        verify(categoriaImpl).disableCategoria(1L);
     }
 
     /**
@@ -144,7 +148,9 @@ public class CategoriaIntegrationTest {
                         .param("id", "1")
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/gestore?section=categories"));
+                .andExpect(redirectedUrl("/gestore?section=categories&error"));
+
+        verify(categoriaImpl).disableCategoria(1L);
     }
 
     /**
@@ -159,5 +165,21 @@ public class CategoriaIntegrationTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/gestore?section=categories"));
+
+        verify(categoriaImpl).enableCategoria(1L);
+    }
+
+    @Test
+    @WithMockUser(username = "gestore@test.it", authorities = "GESTORE")
+    public void enableCategoria_EccezioneGenerica() throws Exception {
+        doThrow(new RuntimeException("Errore")).when(categoriaImpl).enableCategoria(1L);
+
+        mockMvc.perform(post("/categoria/enableCategoria")
+                        .param("id", "1")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/gestore?section=categories&error"));
+
+        verify(categoriaImpl).enableCategoria(1L);
     }
 }

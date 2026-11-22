@@ -1,0 +1,74 @@
+name: ResolveIt CI Workflow
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-26.04
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v7 #Loads the repository code into the VM
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6 #Loads the local JDK, otherwise downloads it
+        with: #Exactly the same as the default active jdk of the ubuntu-26.04 image
+          java-version: '25'
+          distribution: 'temurin' # no download needed, unless the default distribution is outdated or changes in the future
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository #Creates a cache if empty or not found
+          key: ${{ runner.os }}-resolveit-${{ hashFiles('**/pom.xml') }} #Use the cache if exists
+          restore-keys: ${{ runner.os }}-resolveit- #otherwise updates it if a previes version exists
+
+      # For testing and build, an embedded H2 database and an embedded Tomcat server (by Spring Boot) are used
+      - name: Run Integration Tests #La VM viene azzerata alla fine della workflow da GitHub, mvn clean non serve
+        run: mvn verify --file pom.xml # recompiles and tests everything
+
+      - name: Generate JaCoCo report
+        run: mvn jacoco:report
+
+      #- name: Run PiTest mutation testing
+      #  run: mvn org.pitest:pitest-maven:mutationCoverage
+      #  continue-on-error: true
+
+      # Display test results in JUnit XML format
+      - name: Generate test report
+        uses: dorny/test-reporter@v3
+        if: success() || failure()
+        with:
+          name: Maven Test Results
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload coverage and test results to Codecov
+        if: success() || failure()
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./target/site/jacoco/jacoco.xml,./target/surefire-reports/TEST-*.xml
+          flags: unittests,test-results
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: resolveit-${{ github.sha }}
+          # Saved externally from the VM, ready for CD usage
+          path: |
+            target/resolveit-0.0.1-SNAPSHOT.jar
+            target/surefire-reports/
+          retention-days: 7
