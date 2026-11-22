@@ -39,7 +39,7 @@ jobs:
         run: |
           echo "Downloaded files:"
           ls -lah target/
-          test -f target/resolveit-0.0.1-SNAPSHOT.jar
+          test -f target/*.jar
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
