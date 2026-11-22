@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-26.04
     name: Build Docker Image
     # Si avvia solo se la CI ha avuto successo dopo una pull request
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'}}
+    if: ${{ github.event.workflow_run.conclusion == 'success'}}
 
     steps:
       - name: Checkout code
