@@ -39,7 +39,7 @@ Both workflows have **read-only** access to the repository (`contents: read`) an
 │  Developer  │ ───────────►   │        CI job            │ ────────────────► │     CD job               │
 │  commits    │                │ checkout → JDK25 → cache │                   │ login → buildx → push    │
 └─────────────┘                │ mvn verify (H2)          │                   │ multi-platform image     │
-                               │ JaCoCo + PiTest reports  │                   │ to Docker Hub            │
+                               │ JaCoCo + upload jar      │                   │ to Docker Hub            │
                                └──────────────────────────┘                   └──────────────────────────┘
 ```
 
@@ -107,7 +107,7 @@ uses: actions/upload-artifact@v7
 with:
   name: resolveit-${{ github.sha }}
   path: |
-    target/resolveit-0.0.1-SNAPSHOT.jar
+    target/*.jar
     target/surefire-reports/
   retention-days: 7
 ```

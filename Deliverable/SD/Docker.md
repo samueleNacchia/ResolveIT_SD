@@ -8,24 +8,21 @@ Key design and security choices in the `Dockerfile`:
 * **Explicit Artifact Copy:** Uses `COPY` instead of `ADD` to copy the compiled JAR from `target/` into `/app/app.jar`, avoiding any unintended archive extraction (a behaviour `ADD` would trigger for URLs or local tarballs).
 * **Least-Privilege Execution:** Creates a dedicated unprivileged user (`appuser`), assigns ownership of `/app` with `chown -R appuser:appuser /app`, and switches to `USER appuser` so the JVM does not run as `root`.
 * **Exec-Form Entrypoint:** Uses `CMD ["java", "-jar", "app.jar"]` (exec form, not shell form) so the Java process runs as PID 1 and handles termination signals (`SIGTERM`) cleanly for graceful shutdown.
-* **Build Argument:** The listening port is injected at build time via `ARG PORT`, exposed with `EXPOSE ${PORT}`. In `docker-compose.yml` it is set to `8080`.
+* **Build Argument:** The port exposed is set to `8080`.
 
 ```dockerfile
 FROM eclipse-temurin:25-jre-resolute
-ARG PORT
 WORKDIR /app
 COPY target/*.jar app.jar
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
-EXPOSE ${PORT}
+EXPOSE 8080
 CMD ["java", "-jar", "app.jar"]
 ```
 
-> **Tip:** build with `docker build --build-arg PORT=8080 -t resolveit:latest .` when building outside of Compose.
-
 ---
 
-## 2. Multi-Container Orchestration (`docker-compose.yml`)
+## 2. Multi-Container Orchestration (`../../docker-compose-develop.yml`)
 
 To decouple the application logic from persistent storage, the stack is orchestrated via Docker Compose with two services: `web` (the Spring Boot application) and `db` (pinned to `mysql:9.7`).
 
@@ -37,9 +34,11 @@ Key orchestration and resilience choices:
 * **Networking:** A single user-defined bridge network (`resolveit_bridge`) connects both services, so `web` reaches the database via its service name `db`.
 
 ```yaml
+name: resolveit-develop
 services:
   db:
     image: mysql:9.7
+    container_name: resolveit-database-develop
     restart: on-failure
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -48,6 +47,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - ${DB_PORT}:3306
+    networks:
+      - resolveit_network
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -56,12 +57,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        PORT: 8080
+    container_name: resolveit-server-develop
     restart: on-failure
     ports:
       - ${APP_PORT}:8080
@@ -74,6 +75,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - resolveit_network
+
+networks:
+  resolveit_network:
+    name: resolveit_bridge
+    driver: bridge
+
+volumes:
+  mysql_data:
 ```
 
 ### Local development with the stack
@@ -87,7 +98,8 @@ services:
 #   DB_PORT=3306
 #   APP_PORT=8080
 
-docker compose up -d        # start db + web in the background
+docker compose -f docker-compose.deploy.yml up -d     # option 1: downloads the image, then start db + web in the background
+docker compose -f docker-compose.develop.yml up -d    # option 2: builds the image locally, then start db + web in the background
 docker compose logs -f web  # follow application logs
 ```
 
