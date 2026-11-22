@@ -1,8 +1,7 @@
 # 1. Explicit base image version (avoids unpredictable :latest tag)
 FROM eclipse-temurin:25-jre-resolute
 
-# 2. Define working directory and arguments
-ARG PORT
+# 2. Define working directory
 WORKDIR /app
 
 # 3. Use COPY instead of ADD to prevent unintended archive extraction
@@ -12,7 +11,7 @@ COPY target/*.jar app.jar
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE ${PORT}
+EXPOSE 8080
 
 # 5. Exec-form entrypoint definition
 CMD ["java", "-jar", "app.jar"]
