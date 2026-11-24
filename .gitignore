@@ -60,3 +60,6 @@ replay_pid*
 
 # Environment variables / Secrets
 .env
+
+# SonarQube Plugin Temp
+.sonar

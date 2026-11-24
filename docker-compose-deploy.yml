@@ -3,7 +3,7 @@ services:
   db:
     image: mysql:9.7
     container_name: resolveit-database-deploy
-    restart: on-failure
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -25,7 +25,7 @@ services:
   web:
     image: samuelee05/resolveit_sd:latest
     container_name: resolveit-server-deploy
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - ${APP_PORT}:8080
     environment:
