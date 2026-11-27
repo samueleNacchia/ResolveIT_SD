@@ -6,6 +6,7 @@ import it.unisa.resolveIt.model.entity.Operatore;
 import it.unisa.resolveIt.model.entity.Ticket;
 import it.unisa.resolveIt.model.enums.Stato;
 import it.unisa.resolveIt.model.repository.CategoriaRepository;
+import it.unisa.resolveIt.model.repository.OperatoreRepository;
 import it.unisa.resolveIt.model.repository.TicketRepository;
 import it.unisa.resolveIt.ticket.TicketAttachmentValidator;
 import it.unisa.resolveIt.ticket.dto.TicketDTO;
@@ -15,20 +16,24 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
-public class TicketImpl implements TicketService{
+public class TicketImpl implements TicketService {
 
+    //@ spec_public nullable
     @Autowired
     private TicketRepository ticketRepository;
 
+    //@ spec_public nullable
     @Autowired
     private CategoriaRepository categoriaRepository;
 
-    private final String titolo_regex = "^[a-zA-Z0-9À-ÿ '‘\".,!?-]{5,100}$";
-
+    //@ spec_public nullable
+    @Autowired
+    private OperatoreRepository operatoreRepository;
 
     private TicketDTO convertToDTO(Ticket t) {
         TicketDTO dto = new TicketDTO();
@@ -48,13 +53,18 @@ public class TicketImpl implements TicketService{
     }
 
     @Transactional
+    @Override
+    //@ skipesc
     public void addTicket(TicketDTO dto, Cliente autore) throws IOException {
+        if (dto == null || autore == null) {
+            throw new RuntimeException("Dati ticket o autore non validi");
+        }
         Ticket ticket = new Ticket();
         ticket.setTitolo(dto.getTitolo());
         ticket.setDescrizione(dto.getDescrizione());
 
         Categoria cat = categoriaRepository.findById(dto.getIdCategoria()).orElse(null);
-        if (cat == null || cat.getStato() == false) {
+        if (cat == null || !cat.getStato()) {
             throw new RuntimeException("Categoria non valida");
         }
         ticket.setCategoria(cat);
@@ -78,7 +88,7 @@ public class TicketImpl implements TicketService{
             throw new RuntimeException("Formato titolo non valido");
         }
 
-        if(dto.getDescrizione().length() > 2000){
+        if (dto.getDescrizione().length() > 2000) {
             throw new RuntimeException("Lunghezza descrizione non valida");
         }
 
@@ -92,34 +102,46 @@ public class TicketImpl implements TicketService{
         ticket.setDataResolved(null);
 
         try {
-            ticketRepository.save(ticket);
+            ticketRepository.<Ticket>save(ticket);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-
-
+    @Override
     public void deleteTicket(Long ticketId) {
-        Ticket ticket = ticketRepository.findById(ticketId).orElse(null);
-        if(ticket == null) throw new RuntimeException("Ticket non trovato");
+        //@ assume ticketRepository != null;
+        if (ticketId == null) throw new RuntimeException("ID ticket non valido");
+        Optional<Ticket> opt = ticketRepository.findById(ticketId);
+        //@ assume opt != null;
+        if (!opt.isPresent()) throw new RuntimeException("Ticket non trovato");
+        Ticket ticket = opt.get();
+        //@ assume ticket != null;
 
-        if (!ticket.getStato().equals(Stato.APERTO)) {
+        Stato stato = ticket.getStato();
+        //@ assume stato != null;
+        if (stato != Stato.APERTO) {
             throw new RuntimeException("Ticket in stato non valido");
         }
 
         ticket.setDataAnnullamento(LocalDateTime.now());
         ticket.setStato(Stato.ANNULLATO);
-        ticketRepository.save(ticket);
+        ticketRepository.<Ticket>save(ticket);
     }
 
-
-
+    @Override
     public void assignTicket(Long ticketId, Operatore operatore) {
-        Ticket ticket = ticketRepository.findById(ticketId).orElse(null);
-        if(ticket == null) throw new RuntimeException("Ticket non trovato");
+        //@ assume ticketRepository != null;
+        if (ticketId == null) throw new RuntimeException("ID ticket non valido");
+        Optional<Ticket> opt = ticketRepository.findById(ticketId);
+        //@ assume opt != null;
+        if (!opt.isPresent()) throw new RuntimeException("Ticket non trovato");
+        Ticket ticket = opt.get();
+        //@ assume ticket != null;
 
-        if (!ticket.getStato().equals(Stato.APERTO)) {
+        Stato stato = ticket.getStato();
+        //@ assume stato != null;
+        if (stato != Stato.APERTO) {
             throw new RuntimeException("Ticket in stato non valido");
         }
 
@@ -130,66 +152,105 @@ public class TicketImpl implements TicketService{
         ticket.setOperatore(operatore);
         ticket.setDataInCarico(LocalDateTime.now());
         ticket.setStato(Stato.IN_CORSO);
-        ticketRepository.save(ticket);
+        ticketRepository.<Ticket>save(ticket);
     }
 
-
-
+    @Override
     public void resolveTicket(Long ticketId) {
-        Ticket ticket = ticketRepository.findById(ticketId).orElse(null);
-        if(ticket == null) throw new RuntimeException("Ticket non trovato");
+        //@ assume ticketRepository != null;
+        if (ticketId == null) throw new RuntimeException("ID ticket non valido");
+        Optional<Ticket> opt = ticketRepository.findById(ticketId);
+        //@ assume opt != null;
+        if (!opt.isPresent()) throw new RuntimeException("Ticket non trovato");
+        Ticket ticket = opt.get();
+        //@ assume ticket != null;
 
-        if (!ticket.getStato().equals(Stato.IN_CORSO)) {
+        Stato stato = ticket.getStato();
+        //@ assume stato != null;
+        if (stato != Stato.IN_CORSO) {
             throw new RuntimeException("Ticket in stato non valido");
         }
 
         ticket.setDataResolved(LocalDateTime.now());
         ticket.setStato(Stato.RISOLTO);
-        ticketRepository.save(ticket);
+        ticketRepository.<Ticket>save(ticket);
     }
 
-
+    @Override
+    //@ skipesc
     public void releaseTicket(Long ticketId) {
-        Ticket ticket = ticketRepository.findById(ticketId).orElse(null);
-        if(ticket == null) throw new RuntimeException("Ticket non trovato");
+        //@ assume ticketRepository != null;
+        if (ticketId == null) throw new RuntimeException("ID ticket non valido");
+        Optional<Ticket> opt = ticketRepository.findById(ticketId);
+        //@ assume opt != null;
+        if (!opt.isPresent()) throw new RuntimeException("Ticket non trovato");
+        Ticket ticket = opt.get();
+        //@ assume ticket != null;
 
-        if (!ticket.getStato().equals(Stato.IN_CORSO)) {
+        Stato stato = ticket.getStato();
+        //@ assume stato != null;
+        if (stato != Stato.IN_CORSO) {
             throw new RuntimeException("Ticket in stato non valido");
         }
 
         ticket.setOperatore(null);
         ticket.setStato(Stato.APERTO);
 
-        ticketRepository.save(ticket);
-    }
-
-    public Ticket getTicketById(Long id) {
-        return ticketRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ticket non trovato"));
-    }
-
-    public List<TicketDTO> getTicketUtente(Cliente cliente) {
-        return ticketRepository.findByClienteOrderByDataCreazioneDesc(cliente).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-
-    public List<TicketDTO> getTicketDisponibili() {
-        return ticketRepository.findByStato(Stato.APERTO).stream().map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-
-    public List<TicketDTO> getTicketInCarico(Operatore operatore) {
-        return ticketRepository.findByOperatore(operatore).stream().map(this::convertToDTO)
-                .collect(Collectors.toList());
+        ticketRepository.<Ticket>save(ticket);
     }
 
     @Override
+    public Ticket getTicketById(Long id) {
+        //@ assume ticketRepository != null;
+        if (id == null) throw new RuntimeException("ID non valido");
+        Optional<Ticket> opt = ticketRepository.findById(id);
+        //@ assume opt != null;
+        if (!opt.isPresent()) throw new RuntimeException("Ticket non trovato");
+        Ticket t = opt.get();
+        //@ assume t != null;
+        return t;
+    }
+
+    @Override
+    //@ skipesc
+    public List<TicketDTO> getTicketUtente(Cliente cliente) {
+        if (cliente == null) throw new RuntimeException("Cliente non valido");
+        List<TicketDTO> result = new ArrayList<>();
+        for (Ticket t : ticketRepository.findByClienteOrderByDataCreazioneDesc(cliente)) {
+            result.add(convertToDTO(t));
+        }
+        return result;
+    }
+
+    @Override
+    //@ skipesc
+    public List<TicketDTO> getTicketDisponibili() {
+        List<TicketDTO> result = new ArrayList<>();
+        for (Ticket t : ticketRepository.findByStato(Stato.APERTO)) {
+            result.add(convertToDTO(t));
+        }
+        return result;
+    }
+
+    @Override
+    //@ skipesc
+    public List<TicketDTO> getTicketInCarico(Operatore operatore) {
+        if (operatore == null) throw new RuntimeException("Operatore non valido");
+        List<TicketDTO> result = new ArrayList<>();
+        for (Ticket t : ticketRepository.findByOperatore(operatore)) {
+            result.add(convertToDTO(t));
+        }
+        return result;
+    }
+
+    @Override
+    //@ skipesc
     public List<TicketDTO> getTicketUtenteFiltrati(Cliente cliente, Stato stato, String ordine) {
-        return ticketRepository.findByClienteAndOptionalStato(cliente, stato, ordine).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        if (cliente == null) throw new RuntimeException("Cliente non valido");
+        List<TicketDTO> result = new ArrayList<>();
+        for (Ticket t : ticketRepository.findByClienteAndOptionalStato(cliente, stato, ordine)) {
+            result.add(convertToDTO(t));
+        }
+        return result;
     }
 }

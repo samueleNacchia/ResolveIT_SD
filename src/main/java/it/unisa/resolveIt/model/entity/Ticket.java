@@ -141,7 +141,7 @@ public class Ticket {
         return operatore;
     }
 
-    public void setOperatore(Operatore operatore) {
+    public void setOperatore(/*@ nullable @*/ Operatore operatore) {
         this.operatore = operatore;
     }
 

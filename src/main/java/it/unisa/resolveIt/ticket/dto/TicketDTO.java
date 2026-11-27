@@ -58,7 +58,7 @@ public class TicketDTO {
         this.id = id;
     }
 
-    public String getTitolo() {
+    public /*@ pure nullable @*/ String getTitolo() {
         return titolo;
     }
 
@@ -66,7 +66,7 @@ public class TicketDTO {
         this.titolo = titolo;
     }
 
-    public String getDescrizione() {
+    public /*@ pure nullable @*/ String getDescrizione() {
         return descrizione;
     }
 

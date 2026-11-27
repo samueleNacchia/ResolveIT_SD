@@ -5,25 +5,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import it.unisa.resolveIt.model.entity.Categoria;
+
 import java.util.Optional;
 
 @Service
-public class CategoriaImpl implements  CategoriaService{
+public class CategoriaImpl implements CategoriaService {
 
+    //@ spec_public nullable
     @Autowired
-    //Categoria repository
-    private CategoriaRepository categoriaRepository ;
+    private CategoriaRepository categoriaRepository;
 
     @Transactional
+    @Override
     public void disableCategoria(long id) {
+        //@ assume categoriaRepository != null;
         Optional<Categoria> esistente = categoriaRepository.findById(id);
+        //@ assume esistente != null;
         if (esistente.isPresent()) {
-            // CORREZIONE: Se la disabilitazione ha successo, salvo.
+            //@ assume esistente.get() != null;
             if (esistente.get().disable()) {
-                categoriaRepository.save(esistente.get());
+                categoriaRepository.<Categoria>save(esistente.get());
             } else {
-                // ALTRIMENTI (else), se era già disabilitata, lancio l'errore.
-                // Senza questo 'else', l'errore veniva lanciato sempre, annullando il salvataggio!
                 throw new RuntimeException("Categoria già disabilitata");
             }
         } else {
@@ -32,13 +34,15 @@ public class CategoriaImpl implements  CategoriaService{
     }
 
     @Transactional
+    @Override
     public void enableCategoria(long id) {
+        //@ assume categoriaRepository != null;
         Optional<Categoria> esistente = categoriaRepository.findById(id);
-
+        //@ assume esistente != null;
         if (esistente.isPresent()) {
-            // CORREZIONE: Aggiunto else anche qui
+            //@ assume esistente.get() != null;
             if (esistente.get().enable()) {
-                categoriaRepository.save(esistente.get());
+                categoriaRepository.<Categoria>save(esistente.get());
             } else {
                 throw new RuntimeException("Categoria già abilitata");
             }
@@ -47,35 +51,36 @@ public class CategoriaImpl implements  CategoriaService{
         }
     }
 
-
     @Transactional
+    @Override
     public void addCategoria(Categoria categoria) {
+        //@ assume categoriaRepository != null;
         if (categoria == null) {
             throw new IllegalArgumentException("Dati categoria non validi");
         }
         if (categoriaRepository.existsById(categoria.getID_C()) || (categoriaRepository.findByNome(categoria.getNome()) != null))
             throw new RuntimeException("Categoria già presente nel database");
         else
-            categoriaRepository.save(categoria);
+            categoriaRepository.<Categoria>save(categoria);
     }
 
     @Transactional
+    @Override
     public void updateCategoria(Categoria categoria) {
+        //@ assume categoriaRepository != null;
         if (categoria == null) {
             throw new IllegalArgumentException("Dati categoria non validi");
         }
-        if (categoriaRepository.findByNome(categoria.getNome())!= null)
-        {
+        if (categoriaRepository.findByNome(categoria.getNome()) != null) {
             throw new IllegalArgumentException("Categoria già esistente");
         }
         Optional<Categoria> esistente = categoriaRepository.findById(categoria.getID_C());
-
+        //@ assume esistente != null;
         if (esistente.isPresent()) {
+            //@ assume esistente.get() != null;
             esistente.get().setNome(categoria.getNome());
-            categoriaRepository.save(esistente.get());
-
+            categoriaRepository.<Categoria>save(esistente.get());
         } else
             throw new RuntimeException("Categoria non trovata per l'aggiornamento");
-
     }
 }

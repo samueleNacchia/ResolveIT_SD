@@ -15,24 +15,30 @@ import java.util.Optional;
 @Service
 public class AccountImpl implements AccountService {
 
+    //@ spec_public nullable
     @Autowired
     private ClienteRepository clienteRepository;
 
+    //@ spec_public nullable
     @Autowired
     private OperatoreRepository operatoreRepository;
 
+    //@ spec_public nullable
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-
     @Transactional
+    @Override
     public void removeAccountCliente(long id) {
+        //@ assume clienteRepository != null && operatoreRepository != null && passwordEncoder != null;
         Optional<Cliente> cliente = clienteRepository.findById(id);
+        //@ assume cliente != null;
 
         if (cliente.isPresent()) {
+            //@ assume cliente.get() != null;
             if (cliente.get().isEnabled()) {
                 cliente.get().disable();
-                clienteRepository.save(cliente.get());
+                clienteRepository.<Cliente>save(cliente.get());
             } else {
                 throw new RuntimeException("Account cliente già disabilitato");
             }
@@ -41,15 +47,18 @@ public class AccountImpl implements AccountService {
         }
     }
 
-
     @Transactional
+    @Override
     public void removeAccountOperatore(long id) {
+        //@ assume clienteRepository != null && operatoreRepository != null && passwordEncoder != null;
         Optional<Operatore> operatore = operatoreRepository.findById(id);
+        //@ assume operatore != null;
 
         if (operatore.isPresent()) {
+            //@ assume operatore.get() != null;
             if (operatore.get().isEnabled()) {
                 operatore.get().disable();
-                operatoreRepository.save(operatore.get());
+                operatoreRepository.<Operatore>save(operatore.get());
             } else {
                 throw new RuntimeException("Account operatore già disabilitato");
             }
@@ -58,8 +67,12 @@ public class AccountImpl implements AccountService {
         }
     }
 
-
+    @Override
     public MyProfileDTO getUserByEmail(String email) {
+        //@ assume clienteRepository != null && operatoreRepository != null && passwordEncoder != null;
+        if (email == null || email.isEmpty()) {
+            throw new RuntimeException("Email non valida");
+        }
         Operatore operatore = operatoreRepository.findByEmail(email);
 
         if (operatore == null) {
@@ -85,43 +98,51 @@ public class AccountImpl implements AccountService {
     }
 
     @Transactional
+    @Override
     public boolean modifyUser(MyProfileDTO userDto) {
-        String email = userDto.getEmail();
-        String nome = userDto.getNome();
-        String cognome = userDto.getCognome();
-        String nuovaPassword = userDto.getPassword();
-        String confermaNuovaPassword = userDto.getConfermaPassword();
+        //@ assume clienteRepository != null && operatoreRepository != null && passwordEncoder != null;
+        if (userDto == null) {
+            throw new RuntimeException("Dati profilo mancanti");
+        }
+        /*@ nullable @*/ String email = userDto.getEmail();
+        /*@ nullable @*/ String nome = userDto.getNome();
+        /*@ nullable @*/ String cognome = userDto.getCognome();
+        /*@ nullable @*/ String nuovaPassword = userDto.getPassword();
+        /*@ nullable @*/ String confermaNuovaPassword = userDto.getConfermaPassword();
+        //@ assume email != null;
         boolean passwordChanged = false;
 
         Operatore operatore = operatoreRepository.findByEmail(email);
 
         if (operatore != null) {
-            operatore.setNome(nome);
-            operatore.setCognome(cognome);
-
             if (nuovaPassword != null && !nuovaPassword.isEmpty()) {
                 if (!nuovaPassword.equals(confermaNuovaPassword)) {
                     throw new RuntimeException("Le password non coincidono!");
                 }
-                operatore.setPassword(passwordEncoder.encode(nuovaPassword));
+                String encoded = passwordEncoder.encode(nuovaPassword);
+                //@ assume encoded != null;
+                operatore.setPassword(encoded);
                 passwordChanged = true;
             }
+            operatore.setNome(nome);
+            operatore.setCognome(cognome);
             return passwordChanged;
         }
 
         Cliente cliente = clienteRepository.findByEmail(email);
 
         if (cliente != null) {
-            cliente.setNome(nome);
-            cliente.setCognome(cognome);
-
             if (nuovaPassword != null && !nuovaPassword.isEmpty()) {
                 if (!nuovaPassword.equals(confermaNuovaPassword)) {
                     throw new RuntimeException("Le password non coincidono!");
                 }
-                cliente.setPassword(passwordEncoder.encode(nuovaPassword));
+                String encoded = passwordEncoder.encode(nuovaPassword);
+                //@ assume encoded != null;
+                cliente.setPassword(encoded);
                 passwordChanged = true;
             }
+            cliente.setNome(nome);
+            cliente.setCognome(cognome);
             return passwordChanged;
         }
 

@@ -34,7 +34,7 @@ public class MyProfileDTO {
         this.isClient = isClient;
     }
 
-    public String getCognome() {
+    public /*@ pure nullable @*/ String getCognome() {
         return cognome;
     }
 
@@ -42,7 +42,7 @@ public class MyProfileDTO {
         this.cognome = cognome;
     }
 
-    public String getEmail() {
+    public /*@ pure nullable @*/ String getEmail() {
         return email;
     }
 
@@ -50,7 +50,7 @@ public class MyProfileDTO {
         this.email = email;
     }
 
-    public String getPassword() {
+    public /*@ pure nullable @*/ String getPassword() {
         return password;
     }
 
@@ -58,7 +58,7 @@ public class MyProfileDTO {
         this.password = password;
     }
 
-    public String getConfermaPassword() {
+    public /*@ pure nullable @*/ String getConfermaPassword() {
         return confermaPassword;
     }
 
@@ -74,7 +74,7 @@ public class MyProfileDTO {
         isClient = client;
     }
 
-    public String getNome() {
+    public /*@ pure nullable @*/ String getNome() {
         return nome;
     }
 

@@ -25,6 +25,7 @@ Automated GitHub Actions workflows keep the code tested and packaged:
 - [Containerization & Docker](/Deliverable/SD/Docker.md)
 - [Test Coverage Analysis](/Deliverable/SD/coverage.md)
 - [Mutation Testing Report](/Deliverable/SD/mutation.md)
+- [JML & OpenJML Verification Report]/Deliverable/SD/(verification.md)
 
 ## Deploy locally with Docker Compose
 
